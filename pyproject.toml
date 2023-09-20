@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "uds"
+version = "0.1.0"
+description = ""
+authors = ["Zachary Varley <zvarley@andrew.cmu.edu>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+numpy = "^1.21.2"
+FastGeodis = "^1.0.4"
+h5py = "^3.4.0"
+scipy = "^1.7.1"
+seaborn = "^0.11.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
