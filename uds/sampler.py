@@ -127,7 +127,7 @@ def _local_maxima(scores: torch.Tensor, radius: int):
     return coords_2d #window_maxima[coords_2d[:, 0], coords_2d[:, 1]]
 
 
-class FastDynamicSampling:
+class DynamicSampling:
     """
     This is a dynamic sampling method that uses the local neighborhood of the
     image to determine the best pixel locations to sample. Scores are calculated
@@ -192,13 +192,16 @@ class FastDynamicSampling:
         # make indicator tensor fed to geodesic distance transform
         self.indicator = torch.ones_like(self.image)
 
+        # sobol samples
+        self.sobol = None
+
     def ask(self):
         """
         Returns the coordinates of the pixels to sample.
 
         Returns
         -------
-        coords : np.ndarray
+        coords : torch.Tensor
             The coordinates of the pixels to sample.
 
         """
@@ -254,6 +257,70 @@ class FastDynamicSampling:
 
         # Return the coordinates
         return coords
+    
+    def ask_sobol(self, n_samples):
+        """
+        Returns the coordinates of the pixels to sample (chosen statically).
+
+        Parameters
+        ----------
+        n_samples : int
+            The number of samples to return.
+
+        Returns
+        -------
+        coords : torch.Tensor
+            The coordinates of the pixels to sample.
+
+        """
+        # check that no pixels have been sampled
+        if self.num_sampled != 0:
+            raise ValueError("Cannot use ask_sobol if pixels have already been sampled.")
+        
+        if self.sobol is None:
+            self.sobol = torch.quasirandom.SobolEngine(2, scramble=True)
+
+        # generate Sobol sequence sampling 
+        sobol_samples = self.sobol.draw(n_samples).to(self.image.device)
+
+        # convert to coordinates
+        sobol_samples[:, 0] *= (self.region_shape[0] - 1)
+        sobol_samples[:, 1] *= (self.region_shape[1] - 1)
+
+        # convert to long
+        sobol_samples = sobol_samples.long()
+
+        # Return the coordinates
+        return sobol_samples
+    
+
+    def ask_random(self, n_samples):
+        """
+        Returns the coordinates of the pixels to sample (chosen statically).
+        Assumes that no other pixels have been sampled.
+
+        Parameters
+        ----------
+        n_samples : int
+            The number of samples to return.
+
+        Returns
+        -------
+        coords : torch.Tensor
+            The coordinates of the pixels to sample.
+
+        """
+        # check that no pixels have been sampled
+        if self.num_sampled != 0:
+            raise ValueError("Cannot use ask_random if pixels have already been sampled.")
+        
+        # random coordinates
+        rand_flat_indices = torch.randperm(self.region_shape[0] * self.region_shape[1], device=self.image.device)[:n_samples]
+        rand_coords = torch.stack((rand_flat_indices // self.region_shape[1], rand_flat_indices % self.region_shape[1]), dim=1)
+
+        # Return the coordinates
+        return rand_coords
+
 
     def tell(self, coords, values):
         """
